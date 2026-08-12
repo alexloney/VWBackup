@@ -24,6 +24,8 @@ jobs:
           
           ### 🐳 Docker Image
           
+          **Platform:** `linux/amd64` (x86_64)
+          
           Pull the Docker image:
           ```bash
           docker pull ghcr.io/${{ github.repository_owner }}/vwbackup:${{ github.ref_name }}

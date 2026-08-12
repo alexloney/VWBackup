@@ -2,6 +2,8 @@
 
 This guide explains how to run the Vaultwarden backup script in Docker with automated cron scheduling.
 
+**Platform Support:** This image is built for `linux/amd64` (x86_64) only, as Bitwarden CLI doesn't provide ARM64 binaries.
+
 ## Quick Start
 
 1. **Copy the example environment file:**

@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bitwarden CLI
+# Note: Bitwarden only provides x86_64 Linux binaries, so this image only supports linux/amd64
 RUN wget https://github.com/bitwarden/clients/releases/download/cli-v2026.7.0/bw-linux-2026.7.0.zip \
     && unzip bw-linux-2026.7.0.zip \
     && chmod +x bw \

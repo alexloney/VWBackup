@@ -13,7 +13,8 @@ Automatically builds and publishes Docker images when:
 
 **Supported platforms:**
 - `linux/amd64` (x86_64)
-- `linux/arm64` (ARM, Apple Silicon, Raspberry Pi)
+
+**Note:** ARM64 is not currently supported because Bitwarden CLI doesn't provide pre-built ARM64 binaries.
 
 ### 2. **Test Docker Build** (`.github/workflows/docker-test.yml`)
 
@@ -160,17 +161,17 @@ docker-compose up -d
 
 ### Change platforms
 
+The image is built for `linux/amd64` only because Bitwarden CLI doesn't provide ARM64 binaries.
+
+If you want to experiment with other architectures (not recommended):
+
 Edit `.github/workflows/docker-publish.yml`:
 
 ```yaml
-platforms: linux/amd64  # Build only for x86_64
+platforms: linux/amd64  # Recommended
 ```
 
-Or add more platforms:
-
-```yaml
-platforms: linux/amd64,linux/arm64,linux/arm/v7
-```
+**Note:** Adding `linux/arm64` or `linux/arm/v7` will fail unless you modify the Dockerfile to install Bitwarden CLI differently (e.g., via npm).
 
 ### Change image name
 
