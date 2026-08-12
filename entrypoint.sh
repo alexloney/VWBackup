@@ -8,6 +8,12 @@ echo "=========================================="
 echo "Vaultwarden Backup - Docker Container"
 echo "=========================================="
 
+# Set timezone
+TZ="${TZ:-UTC}"
+ln -snf /usr/share/zoneinfo/$TZ /etc/localtime
+echo $TZ > /etc/timezone
+echo "Timezone: $TZ ($(date))"
+
 # Default cron schedule: daily at 2 AM
 CRON_SCHEDULE="${CRON_SCHEDULE:-0 2 * * *}"
 

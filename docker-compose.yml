@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     
     environment:
-      # Cron schedule (default: daily at 2 AM)
+      # Cron schedule (uses timezone specified by TZ variable)
       # Examples:
       #   "0 2 * * *"     - Daily at 2 AM
       #   "0 */6 * * *"   - Every 6 hours
@@ -20,6 +20,9 @@ services:
       
       # Skip confirmation prompt (required for automation)
       SKIP_CONFIRMATION: "true"
+      
+      # Timezone (e.g., "America/New_York", "Europe/London", "UTC")
+      TZ: "${TZ:-UTC}"
       
       # Vaultwarden (local) credentials
       LOCAL_VAULTWARDEN_URL: "${LOCAL_VAULTWARDEN_URL}"

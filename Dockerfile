@@ -6,14 +6,15 @@ RUN apt-get update && apt-get install -y \
     unzip \
     cron \
     curl \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bitwarden CLI
-RUN wget https://github.com/bitwarden/clients/releases/download/cli-v2024.7.0/bw-linux-2024.7.0.zip \
-    && unzip bw-linux-2024.7.0.zip \
+RUN wget https://github.com/bitwarden/clients/releases/download/cli-v2026.7.0/bw-linux-2026.7.0.zip \
+    && unzip bw-linux-2026.7.0.zip \
     && chmod +x bw \
     && mv bw /usr/local/bin/ \
-    && rm bw-linux-2024.7.0.zip
+    && rm bw-linux-2026.7.0.zip
 
 # Verify bw installation
 RUN bw --version
@@ -39,6 +40,7 @@ RUN mkdir -p /app/logs
 ENV CRON_SCHEDULE="0 2 * * *"
 ENV SKIP_CONFIRMATION="true"
 ENV RUN_ON_STARTUP="false"
+ENV TZ="UTC"
 
 # Use entrypoint script
 ENTRYPOINT ["/entrypoint.sh"]

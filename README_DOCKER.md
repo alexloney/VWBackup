@@ -31,6 +31,7 @@ This guide explains how to run the Vaultwarden backup script in Docker with auto
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `CRON_SCHEDULE` | Cron schedule expression | `0 2 * * *` (daily at 2 AM) |
+| `TZ` | Timezone for cron schedule | `America/New_York`, `Europe/London`, `UTC` |
 | `RUN_ON_STARTUP` | Run backup immediately when container starts | `true` or `false` |
 | `SKIP_CONFIRMATION` | Skip deletion confirmation (required for automation) | `true` |
 | `LOCAL_VAULTWARDEN_URL` | URL of your Vaultwarden instance | `http://vaultwarden:8080` |
@@ -57,6 +58,40 @@ CRON_SCHEDULE="*/30 * * * *"
 
 # Twice daily (2 AM and 2 PM)
 CRON_SCHEDULE="0 2,14 * * *"
+```
+
+### Timezone Configuration
+
+The `TZ` environment variable sets the timezone for the cron schedule. By default, it's set to `UTC`.
+
+**Common timezone examples:**
+```bash
+# United States
+TZ="America/New_York"        # Eastern Time
+TZ="America/Chicago"         # Central Time
+TZ="America/Denver"          # Mountain Time
+TZ="America/Los_Angeles"     # Pacific Time
+
+# Europe
+TZ="Europe/London"           # UK
+TZ="Europe/Paris"            # Central European Time
+TZ="Europe/Berlin"           # Germany
+
+# Asia/Pacific
+TZ="Asia/Tokyo"              # Japan
+TZ="Asia/Shanghai"           # China
+TZ="Australia/Sydney"        # Australia
+
+# UTC (default)
+TZ="UTC"
+```
+
+**Full list of timezones:** https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+
+**Example:** To run backup daily at 2 AM Eastern Time:
+```bash
+CRON_SCHEDULE="0 2 * * *"
+TZ="America/New_York"
 ```
 
 ## Docker Commands
