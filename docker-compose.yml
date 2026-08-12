@@ -2,7 +2,13 @@ version: '3.8'
 
 services:
   vw-backup:
+    # Option 1: Build locally
     build: .
+    
+    # Option 2: Use pre-built image from GitHub Container Registry
+    # Uncomment the line below and comment out 'build: .' above
+    # image: ghcr.io/YOUR_USERNAME/vwbackup:latest
+    
     container_name: vaultwarden-backup
     restart: unless-stopped
     
@@ -13,13 +19,13 @@ services:
       #   "0 */6 * * *"   - Every 6 hours
       #   "0 0 * * 0"     - Weekly on Sunday at midnight
       #   "*/30 * * * *"  - Every 30 minutes (testing)
-      CRON_SCHEDULE: "0 2 * * *"
+      CRON_SCHEDULE: "${CRON_SCHEDULE:-0 2 * * *}"
       
       # Run backup immediately on container start
-      RUN_ON_STARTUP: "false"
+      RUN_ON_STARTUP: "${RUN_ON_STARTUP:-false}"
       
       # Skip confirmation prompt (required for automation)
-      SKIP_CONFIRMATION: "true"
+      SKIP_CONFIRMATION: "${SKIP_CONFIRMATION:-true}"
       
       # Timezone (e.g., "America/New_York", "Europe/London", "UTC")
       TZ: "${TZ:-UTC}"

@@ -45,20 +45,22 @@ This guide explains how to run the Vaultwarden backup script in Docker with auto
 
 ```bash
 # Every day at 2 AM
-CRON_SCHEDULE="0 2 * * *"
+CRON_SCHEDULE=0 2 * * *
 
 # Every 6 hours
-CRON_SCHEDULE="0 */6 * * *"
+CRON_SCHEDULE=0 */6 * * *
 
 # Every Sunday at midnight
-CRON_SCHEDULE="0 0 * * 0"
+CRON_SCHEDULE=0 0 * * 0
 
 # Every 30 minutes (for testing)
-CRON_SCHEDULE="*/30 * * * *"
+CRON_SCHEDULE=*/30 * * * *
 
 # Twice daily (2 AM and 2 PM)
-CRON_SCHEDULE="0 2,14 * * *"
+CRON_SCHEDULE=0 2,14 * * *
 ```
+
+**Note:** Do not use quotes in your `.env` file - the values are automatically quoted by docker-compose.
 
 ### Timezone Configuration
 
@@ -67,31 +69,31 @@ The `TZ` environment variable sets the timezone for the cron schedule. By defaul
 **Common timezone examples:**
 ```bash
 # United States
-TZ="America/New_York"        # Eastern Time
-TZ="America/Chicago"         # Central Time
-TZ="America/Denver"          # Mountain Time
-TZ="America/Los_Angeles"     # Pacific Time
+TZ=America/New_York        # Eastern Time
+TZ=America/Chicago         # Central Time
+TZ=America/Denver          # Mountain Time
+TZ=America/Los_Angeles     # Pacific Time
 
 # Europe
-TZ="Europe/London"           # UK
-TZ="Europe/Paris"            # Central European Time
-TZ="Europe/Berlin"           # Germany
+TZ=Europe/London           # UK
+TZ=Europe/Paris            # Central European Time
+TZ=Europe/Berlin           # Germany
 
 # Asia/Pacific
-TZ="Asia/Tokyo"              # Japan
-TZ="Asia/Shanghai"           # China
-TZ="Australia/Sydney"        # Australia
+TZ=Asia/Tokyo              # Japan
+TZ=Asia/Shanghai           # China
+TZ=Australia/Sydney        # Australia
 
 # UTC (default)
-TZ="UTC"
+TZ=UTC
 ```
 
 **Full list of timezones:** https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 **Example:** To run backup daily at 2 AM Eastern Time:
 ```bash
-CRON_SCHEDULE="0 2 * * *"
-TZ="America/New_York"
+CRON_SCHEDULE=0 2 * * *
+TZ=America/New_York
 ```
 
 ## Docker Commands

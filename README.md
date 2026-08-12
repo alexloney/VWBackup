@@ -4,13 +4,24 @@ A Python script that automates backing up a self-hosted [Vaultwarden](https://gi
 
 ## 🐳 Quick Start with Docker
 
-For automated scheduled backups, see [README_DOCKER.md](README_DOCKER.md) for full Docker deployment instructions.
+For automated scheduled backups using Docker, see [README_DOCKER.md](README_DOCKER.md).
 
+### Pull pre-built image from GitHub:
 ```bash
+docker pull ghcr.io/YOUR_USERNAME/vwbackup:latest
 cp .env.example .env
 # Edit .env with your credentials
 docker-compose up -d
 ```
+
+### Or build locally:
+```bash
+cp .env.example .env
+# Edit .env with your credentials
+docker-compose up -d --build
+```
+
+See [README_GITHUB_ACTIONS.md](README_GITHUB_ACTIONS.md) for details on using pre-built images.
 
 ## ⚠️ Warning
 

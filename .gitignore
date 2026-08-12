@@ -1,5 +1,6 @@
 # Environment variables (contains sensitive passwords and API keys)
 .env
+!.env.example
 
 # Log files
 logs/
