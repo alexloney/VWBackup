@@ -2,6 +2,16 @@
 
 A Python script that automates backing up a self-hosted [Vaultwarden](https://github.com/dani-garcia/vaultwarden) instance to [Bitwarden Cloud](https://bitwarden.com/).
 
+## 🐳 Quick Start with Docker
+
+For automated scheduled backups, see [README_DOCKER.md](README_DOCKER.md) for full Docker deployment instructions.
+
+```bash
+cp .env.example .env
+# Edit .env with your credentials
+docker-compose up -d
+```
+
 ## ⚠️ Warning
 
 **This script performs DESTRUCTIVE operations!**
@@ -41,6 +51,11 @@ A Python script that automates backing up a self-hosted [Vaultwarden](https://gi
 
 3. **Python Dependencies**
    ```bash
+   pip install -r requirements.txt
+   ```
+   
+   Or install manually:
+   ```bash
    pip install python-dotenv
    ```
 
@@ -67,10 +82,22 @@ A Python script that automates backing up a self-hosted [Vaultwarden](https://gi
 
 2. **Install Python dependencies**
    ```bash
-   pip install python-dotenv
+   pip install -r requirements.txt
    ```
 
-3. **Create a `.env` file** in the project directory with the following variables:
+3. **Create a `.env` file** from the example template:
+   ```bash
+   # Linux/macOS
+   cp .env.example .env
+   
+   # Windows (PowerShell)
+   Copy-Item .env.example .env
+   
+   # Windows (Command Prompt)
+   copy .env.example .env
+   ```
+   
+   Then edit `.env` with your actual credentials:
    ```env
    # Local Vaultwarden Configuration
    LOCAL_VAULTWARDEN_URL=https://vaultwarden.example.com
@@ -81,6 +108,9 @@ A Python script that automates backing up a self-hosted [Vaultwarden](https://gi
    CLOUD_MASTER_PASSWORD=your-cloud-master-password
    BW_CLIENTID=user.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
    BW_CLIENTSECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   
+   # Optional: Skip confirmation prompt for automation (USE WITH CAUTION)
+   # SKIP_CONFIRMATION=true
    ```
 
 4. **Secure the `.env` file** (Unix/Linux/macOS)
@@ -116,13 +146,30 @@ This shows what would happen without actually modifying any data.
 
 ### Skip Confirmation Prompt
 
+For automation and Docker environments, you have two options:
+
+**Option 1: Environment Variable (Recommended for Docker/Automation)**
+
+Set `SKIP_CONFIRMATION=true` in your `.env` file or Docker environment:
+
+```env
+SKIP_CONFIRMATION=true
+```
+
+Then run normally:
+```bash
+python main.py
+```
+
+**Option 2: Command-line Flag**
+
 ⚠️ **Use with extreme caution!**
 
 ```bash
 python main.py --skip-confirmation
 ```
 
-This bypasses the confirmation prompt and proceeds directly with deletion.
+Both options bypass the confirmation prompt and proceed directly with deletion.
 
 ### Help
 
@@ -242,21 +289,87 @@ If the script pauses waiting for input, it means a password wasn't properly pass
 
 ## Automation
 
+### Docker Environment
+
+For Docker deployments, add `SKIP_CONFIRMATION=true` to your environment variables:
+
+**docker-compose.yml example:**
+```yaml
+version: '3.8'
+services:
+  vw-backup:
+    image: python:3.9
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - LOCAL_VAULTWARDEN_URL=${LOCAL_VAULTWARDEN_URL}
+      - LOCAL_VAULTWARDEN_EMAIL=${LOCAL_VAULTWARDEN_EMAIL}
+      - LOCAL_MASTER_PASSWORD=${LOCAL_MASTER_PASSWORD}
+      - CLOUD_MASTER_PASSWORD=${CLOUD_MASTER_PASSWORD}
+      - BW_CLIENTID=${BW_CLIENTID}
+      - BW_CLIENTSECRET=${BW_CLIENTSECRET}
+      - SKIP_CONFIRMATION=true
+    command: python main.py
+```
+
+**Dockerfile example:**
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install Bitwarden CLI
+RUN apt-get update && \
+    apt-get install -y wget unzip && \
+    wget https://vault.bitwarden.com/download/?app=cli&platform=linux -O bw.zip && \
+    unzip bw.zip && \
+    chmod +x bw && \
+    mv bw /usr/local/bin/ && \
+    rm bw.zip && \
+    apt-get clean
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY main.py .
+
+CMD ["python", "main.py"]
+```
+
 ### Scheduled Backups (Linux/macOS)
 
-Create a cron job to run backups automatically:
+Create a cron job to run backups automatically. Add `SKIP_CONFIRMATION=true` to your `.env` file first:
 
 ```bash
 # Edit crontab
 crontab -e
 
 # Add line to run daily at 2 AM
+0 2 * * * cd /path/to/VWBackup && /usr/bin/python3 main.py >> logs/cron.log 2>&1
+```
+
+Or use the command-line flag:
+
+```bash
 0 2 * * * cd /path/to/VWBackup && /usr/bin/python3 main.py --skip-confirmation >> logs/cron.log 2>&1
 ```
 
 ### Scheduled Backups (Windows)
 
-Use Task Scheduler to create a scheduled task:
+**Recommended:** Add `SKIP_CONFIRMATION=true` to your `.env` file, then use Task Scheduler:
+
+1. Open Task Scheduler
+2. Create Basic Task
+3. Set trigger (e.g., daily at 2 AM)
+4. Action: Start a program
+   - Program: `python.exe`
+   - Arguments: `main.py`
+   - Start in: `C:\path\to\VWBackup`
+
+**Alternative:** Use the `--skip-confirmation` flag:
 
 1. Open Task Scheduler
 2. Create Basic Task
@@ -266,7 +379,7 @@ Use Task Scheduler to create a scheduled task:
    - Arguments: `main.py --skip-confirmation`
    - Start in: `C:\path\to\VWBackup`
 
-**Note:** When using `--skip-confirmation`, ensure you understand the risks!
+**Note:** The environment variable approach is safer as it's explicitly configured in your `.env` file rather than in command arguments.
 
 ## Backup Best Practices
 

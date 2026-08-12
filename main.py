@@ -28,6 +28,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================================================================
 # LOGGING SETUP
@@ -69,6 +70,10 @@ for var in required_vars:
     if not os.getenv(var):
         logger.error(f"Missing required environment variable: {var}")
         sys.exit(1)
+
+# Check for automation mode via environment variable
+# Set SKIP_CONFIRMATION=true for Docker/automation environments
+SKIP_CONFIRMATION = os.getenv('SKIP_CONFIRMATION', '').lower() in ('true', '1', 'yes')
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -230,6 +235,42 @@ def confirm_destructive_operation(dry_run=False):
     
     response = input("\nType 'DELETE' to confirm: ").strip()
     return response == "DELETE"
+
+def delete_item(item_id, session_token, max_retries=3):
+    """
+    Delete a single item from the vault.
+    
+    This function is designed to be called in parallel by ThreadPoolExecutor.
+    
+    Args:
+        item_id (str): ID of the item to delete
+        session_token (str): BW_SESSION token for authentication
+        max_retries (int): Maximum number of retry attempts on failure
+        
+    Returns:
+        tuple: (item_id, success, error_message)
+    """
+    env = {"BW_SESSION": session_token}
+    
+    for attempt in range(max_retries):
+        try:
+            subprocess.run(
+                ["bw", "delete", "item", item_id],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env={**os.environ, **env},
+                check=True
+            )
+            return (item_id, True, None)
+        except subprocess.CalledProcessError as e:
+            if attempt == max_retries - 1:
+                return (item_id, False, str(e.stderr))
+            # Brief delay before retry
+            import time
+            time.sleep(0.5)
+    
+    return (item_id, False, "Max retries exceeded")
 
 # ============================================================================
 # MAIN EXECUTION
@@ -400,23 +441,50 @@ Always verify your backup completed successfully before proceeding."""
             # with the local backup. User confirmation required unless skipped.
             
             # Get user confirmation before proceeding with deletion
-            if not args.skip_confirmation:
+            # Skip if: --skip-confirmation flag OR SKIP_CONFIRMATION env var is set
+            if not args.skip_confirmation and not SKIP_CONFIRMATION:
                 if not confirm_destructive_operation(args.dry_run):
                     logger.warning("Operation cancelled by user.")
                     sys.exit(0)
+            elif SKIP_CONFIRMATION:
+                logger.info("Confirmation skipped (SKIP_CONFIRMATION environment variable set)")
             
             # Delete all existing items and folders from cloud vault
             logger.info("Purging old target records to prevent duplicates...")
             if not args.dry_run:
-                # Delete all items (passwords, notes, etc.)
+                # Delete all items (passwords, notes, etc.) in parallel
                 raw_items = run_cmd(["bw", "list", "items"], env_update=cloud_env)
                 items = json.loads(raw_items)
-                logger.info(f"Deleting {len(items)} items...")
-                for i, item in enumerate(items, 1):
-                    run_cmd(["bw", "delete", "item", item['id']], env_update=cloud_env, log_cmd=False)
-                    # Log progress every 10 items to avoid log spam
-                    if i % 10 == 0:
-                        logger.info(f"  Deleted {i}/{len(items)} items")
+                logger.info(f"Deleting {len(items)} items in parallel...")
+                
+                # Use ThreadPoolExecutor for parallel deletion
+                # Adjust max_workers based on API rate limits (10-20 is usually safe)
+                max_workers = 10
+                deleted_count = 0
+                failed_items = []
+                
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    # Submit all deletion tasks
+                    future_to_item = {
+                        executor.submit(delete_item, item['id'], cloud_session): item['id']
+                        for item in items
+                    }
+                    
+                    # Process completed tasks
+                    for future in as_completed(future_to_item):
+                        item_id, success, error_msg = future.result()
+                        if success:
+                            deleted_count += 1
+                            # Log progress every 50 items
+                            if deleted_count % 50 == 0:
+                                logger.info(f"  Deleted {deleted_count}/{len(items)} items...")
+                        else:
+                            failed_items.append((item_id, error_msg))
+                            logger.warning(f"Failed to delete item {item_id}: {error_msg}")
+                
+                logger.info(f"Deleted {deleted_count}/{len(items)} items successfully")
+                if failed_items:
+                    logger.warning(f"Failed to delete {len(failed_items)} items - continuing anyway")
                     
                 # Delete all folders (organizational structure)
                 raw_folders = run_cmd(["bw", "list", "folders"], env_update=cloud_env)
@@ -462,6 +530,24 @@ Always verify your backup completed successfully before proceeding."""
             else:
                 logger.info("[DRY RUN] Would lock and logout")
             
+            # Explicitly remove temporary files before context manager cleanup
+            # This helps prevent file locking issues on Windows
+            if not args.dry_run:
+                logger.info("Cleaning up temporary files...")
+                try:
+                    if os.path.exists(export_file):
+                        os.remove(export_file)
+                        logger.info(f"Removed {export_file}")
+                except Exception as e:
+                    logger.warning(f"Could not remove export file: {e}")
+                
+                try:
+                    if os.path.exists(cloud_backup_file):
+                        os.remove(cloud_backup_file)
+                        logger.info(f"Removed {cloud_backup_file}")
+                except Exception as e:
+                    logger.warning(f"Could not remove cloud backup file: {e}")
+            
             # Success! Log completion message
             logger.info("=" * 60)
             logger.info("[OK] Sync pipeline completed successfully")
@@ -470,15 +556,45 @@ Always verify your backup completed successfully before proceeding."""
             
         except subprocess.CalledProcessError as e:
             # Command execution failed
+            # Try to clean up temporary files even on error
+            if not args.dry_run:
+                try:
+                    if os.path.exists(export_file):
+                        os.remove(export_file)
+                    if os.path.exists(cloud_backup_file):
+                        os.remove(cloud_backup_file)
+                except Exception:
+                    pass  # Ignore cleanup errors during error handling
+            
             logger.error("Sync pipeline aborted due to an error.")
             logger.error(f"Full log available at: {log_file}")
             sys.exit(1)
         except KeyboardInterrupt:
             # User pressed Ctrl+C
+            # Try to clean up temporary files
+            if not args.dry_run:
+                try:
+                    if os.path.exists(export_file):
+                        os.remove(export_file)
+                    if os.path.exists(cloud_backup_file):
+                        os.remove(cloud_backup_file)
+                except Exception:
+                    pass  # Ignore cleanup errors during interrupt
+            
             logger.warning("\nOperation interrupted by user.")
             sys.exit(130)
         except Exception as e:
             # Unexpected error
+            # Try to clean up temporary files
+            if not args.dry_run:
+                try:
+                    if os.path.exists(export_file):
+                        os.remove(export_file)
+                    if os.path.exists(cloud_backup_file):
+                        os.remove(cloud_backup_file)
+                except Exception:
+                    pass  # Ignore cleanup errors during error handling
+            
             logger.error(f"Unexpected error: {e}")
             logger.error(f"Full log available at: {log_file}")
             sys.exit(1)

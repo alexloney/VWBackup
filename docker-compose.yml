@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  vw-backup:
+    build: .
+    container_name: vaultwarden-backup
+    restart: unless-stopped
+    
+    environment:
+      # Cron schedule (default: daily at 2 AM)
+      # Examples:
+      #   "0 2 * * *"     - Daily at 2 AM
+      #   "0 */6 * * *"   - Every 6 hours
+      #   "0 0 * * 0"     - Weekly on Sunday at midnight
+      #   "*/30 * * * *"  - Every 30 minutes (testing)
+      CRON_SCHEDULE: "0 2 * * *"
+      
+      # Run backup immediately on container start
+      RUN_ON_STARTUP: "false"
+      
+      # Skip confirmation prompt (required for automation)
+      SKIP_CONFIRMATION: "true"
+      
+      # Vaultwarden (local) credentials
+      LOCAL_VAULTWARDEN_URL: "${LOCAL_VAULTWARDEN_URL}"
+      LOCAL_VAULTWARDEN_EMAIL: "${LOCAL_VAULTWARDEN_EMAIL}"
+      LOCAL_MASTER_PASSWORD: "${LOCAL_MASTER_PASSWORD}"
+      
+      # Bitwarden Cloud credentials
+      CLOUD_MASTER_PASSWORD: "${CLOUD_MASTER_PASSWORD}"
+      BW_CLIENTID: "${BW_CLIENTID}"
+      BW_CLIENTSECRET: "${BW_CLIENTSECRET}"
+    
+    volumes:
+      # Mount logs directory to persist logs on host
+      - ./logs:/app/logs
+    
+    # Healthcheck to ensure cron is running
+    healthcheck:
+      test: ["CMD", "pgrep", "cron"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
